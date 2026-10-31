@@ -218,13 +218,30 @@ function getWeightedRandom() {
   }
 
   let random = Math.random() * totalWeight;
+  let chosen = 1; // 기본 대체 상품 (편의점 3천원)
   for (let i = 0; i < currentWeights.length; i++) {
     random -= currentWeights[i];
     if (random < 0) {
-      return i;
+      chosen = i;
+      break;
     }
   }
-  return currentWeights.length - 1;
+
+  // 🛡️ [철벽 이중 방어 가드]
+  // - 120회차 미만: 올리브영 3만원(2번) 및 배민 5만원(0번) 당첨 절대 차단!
+  // - 180회차 미만: 배민 5만원(0번) 당첨 절대 차단!
+  // - 이미 1회 당첨되어 재고가 소진된 경우 절대 차단!
+  if (nextSpin < 120 && (chosen === 0 || chosen === 2)) {
+    chosen = Math.random() < 0.7 ? 1 : 3; // 편의점 3,000원(70%) 또는 꽝(30%)으로 강제 전환
+  } else if (nextSpin < 180 && chosen === 0) {
+    chosen = Math.random() < 0.7 ? 1 : 3;
+  }
+
+  if (LIMITED_STOCK[chosen] !== undefined && getAvailableStock(chosen) <= 0) {
+    chosen = Math.random() < 0.7 ? 1 : 3;
+  }
+
+  return chosen;
 }
 
 // 룰렛 회전 애니메이션 및 실행 함수
