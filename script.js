@@ -13,14 +13,45 @@ const prizes = [
   "올리브영 상품권 5,000원",
 ];
 
-// 각 상품별 가중치 (확률 합계: 100)
-// index 0: 배달의민족 상품권 50,000원 -> 0%
-// index 1: 전국편의점 상품권 3,000원   -> 50%
-// index 2: 올리브영 상품권 30,000원   -> 0%
-// index 3: 다시 돌려보세요! (꽝)       -> 20%
-// index 4: 스타벅스 상품권 10,000원   -> 5%
-// index 5: 올리브영 상품권 5,000원     -> 25%
-const weights = [0, 50, 0, 20, 5, 25];
+// ==========================================
+// 🎁 상품 확률 및 한정 수량(재고) 관리
+// ==========================================
+// 300회 행사 중 딱 1번만 등장하도록 설정 (수량 1개 소진 시 자동으로 확률 0% 영구 차단)
+const LIMITED_STOCK = {
+  0: 1, // index 0 (배달의민족 5만원): 최대 1명
+  2: 1, // index 2 (올리브영 3만원): 최대 1명
+};
+
+// 기본 가중치 (300회 진행 시 1회 등장할 수 있도록 자연스러운 0.33% 부여)
+// index 0: 배달의민족 50,000원 -> 0.33% (1회 당첨 즉시 0%로 영구 차단)
+// index 1: 전국편의점 3,000원   -> 49.67%
+// index 2: 올리브영 30,000원   -> 0.33% (1회 당첨 즉시 0%로 영구 차단)
+// index 3: 다시 돌려보세요! (꽝)-> 20%
+// index 4: 스타벅스 10,000원   -> 5%
+// index 5: 올리브영 5,000원     -> 24.67%
+const BASE_WEIGHTS = [0.33, 49.67, 0.33, 20, 5, 24.67];
+
+// 새로고침/재접속 시에도 안전하게 유지되는 당첨 이력 및 재고 확인 함수
+function getPrizeHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("roulette_prize_history") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function recordPrizeWin(index) {
+  const history = getPrizeHistory();
+  history[index] = (history[index] || 0) + 1;
+  localStorage.setItem("roulette_prize_history", JSON.stringify(history));
+}
+
+function getAvailableStock(index) {
+  if (LIMITED_STOCK[index] === undefined) return Infinity; // 한정 상품이 아니면 무제한
+  const history = getPrizeHistory();
+  const wonCount = history[index] || 0;
+  return Math.max(0, LIMITED_STOCK[index] - wonCount);
+}
 
 // DOM 요소
 const wheel = document.getElementById("wheel");
@@ -29,7 +60,9 @@ const resultDisplay = document.getElementById("result-display");
 
 // 세그먼트 당 각도 (360도 / 6개 = 60도)
 const segmentAngle = 360 / prizes.length;
-let spinCount = 0;
+
+// 새로고침해도 누적 회차가 보존되도록 localStorage 연동
+let spinCount = parseInt(localStorage.getItem("roulette_spin_count") || "0", 10);
 
 // --- 사운드 효과 (Web Audio API - 별도 파일 없이 내장 오디오로 동작) ---
 let audioCtx = null;
@@ -145,21 +178,30 @@ function playLoseSound() {
   });
 }
 
-// 가중치 기반 랜덤 인덱스 선택 함수
+// 가중치 및 재고 기반 랜덤 인덱스 선택 함수
 function getWeightedRandom() {
+  // 실시간 잔여 재고를 반영한 가중치 계산
+  const currentWeights = BASE_WEIGHTS.map((weight, idx) => {
+    // 한정 수량 상품(0번, 2번)의 재고가 0개이면 확률을 0%로 강제 차단!
+    if (LIMITED_STOCK[idx] !== undefined && getAvailableStock(idx) <= 0) {
+      return 0;
+    }
+    return weight;
+  });
+
   let totalWeight = 0;
-  for (let i = 0; i < weights.length; i++) {
-    totalWeight += weights[i];
+  for (let i = 0; i < currentWeights.length; i++) {
+    totalWeight += currentWeights[i];
   }
 
   let random = Math.random() * totalWeight;
-  for (let i = 0; i < weights.length; i++) {
-    random -= weights[i];
+  for (let i = 0; i < currentWeights.length; i++) {
+    random -= currentWeights[i];
     if (random < 0) {
       return i;
     }
   }
-  return weights.length - 1;
+  return currentWeights.length - 1;
 }
 
 // 룰렛 회전 애니메이션 및 실행 함수
@@ -173,6 +215,7 @@ function spinWheel() {
 
   const winningIndex = getWeightedRandom();
   spinCount++;
+  localStorage.setItem("roulette_spin_count", spinCount);
 
   // 목표 각도 계산 (세그먼트 정중앙: winningIndex * 60도 + 30도)
   const targetAngle = winningIndex * segmentAngle + 30;
@@ -203,6 +246,8 @@ function spinWheel() {
 // 당첨 결과 화면 출력 함수
 function showResult(winningIndex) {
   const wonPrize = prizes[winningIndex];
+  // 당첨 이력 즉시 영구 저장 (새로고침해도 보존)
+  recordPrizeWin(winningIndex);
 
   if (winningIndex === 3) {
     // 3번 인덱스: 꽝 (다시 돌려보세요!)
@@ -253,7 +298,18 @@ function handleAdminLogin() {
 function unlockScreen() {
   if (lockOverlay) lockOverlay.style.display = "none";
   if (mainContainer) mainContainer.style.display = "flex";
+  // 첫 스핀 버튼 터치 시 렉을 없애기 위해 오디오 엔진 사전 워밍업
+  try {
+    getAudioContext();
+  } catch (e) {}
 }
+
+// 화면 어디든 최초 터치/클릭 시 오디오 및 그래픽 파이프라인 사전 준비
+window.addEventListener("pointerdown", () => {
+  try {
+    getAudioContext();
+  } catch (e) {}
+}, { once: true });
 
 // 화면 다시 잠금 (로그아웃)
 function adminLogout() {

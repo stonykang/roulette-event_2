@@ -129,6 +129,12 @@ header {
 
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
   border: 4px solid #fff;
+
+  /* 첫 회전 렉 방지 (GPU 하드웨어 가속 레이어 상시 대기) */
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .center-btn {
