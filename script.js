@@ -64,6 +64,9 @@ const segmentAngle = 360 / prizes.length;
 // 새로고침해도 누적 회차가 보존되도록 localStorage 연동
 let spinCount = parseInt(localStorage.getItem("roulette_spin_count") || "0", 10);
 
+// 화면상의 실제 룰렛 회전 누적 각도 (0도에서 시작하여 항상 시계방향으로 5바퀴씩 누적)
+let currentRotation = 0;
+
 // --- 사운드 효과 (Web Audio API - 별도 파일 없이 내장 오디오로 동작) ---
 let audioCtx = null;
 
@@ -232,10 +235,22 @@ function spinWheel() {
     // [일반 연출] 중앙 및 폭넓은 범위(-20도 ~ +20도)에서 자연스럽게 멈춤
     randomOffset = Math.floor(Math.random() * 41) - 20;
   }
-  // 5바퀴(1800도) 회전 + 목표 각도 + 랜덤 오프셋
-  const totalRotation = spinCount * 1800 + targetAngle + randomOffset;
+  // 목표 지점 (0도 ~ 360도 원 안에서의 정밀 멈춤 각도)
+  const targetStop = (targetAngle + randomOffset + 360) % 360;
 
-  wheel.style.transform = `rotate(-${totalRotation}deg)`;
+  // 현재 룰렛이 멈춰있는 각도의 360도 기준 위치
+  const currentMod = currentRotation % 360;
+
+  // 항상 정방향(앞으로)으로만 시원하게 돌도록 추가 회전 각도 계산 (절대 뒤로 튀지 않음)
+  let forwardDiff = targetStop - currentMod;
+  if (forwardDiff <= 0) {
+    forwardDiff += 360;
+  }
+
+  // 기본 5바퀴(1800도) + 목표 지점까지의 차이를 항상 누적 회전
+  currentRotation += 1800 + forwardDiff;
+
+  wheel.style.transform = `rotate(-${currentRotation}deg)`;
 
   setTimeout(() => {
     showResult(winningIndex);
@@ -341,6 +356,7 @@ function resetRouletteData() {
     localStorage.removeItem("roulette_prize_history");
     localStorage.removeItem("roulette_spin_count");
     spinCount = 0;
+    currentRotation = 0;
 
     // 룰렛 판 및 결과창 리셋
     wheel.style.transform = "rotate(0deg)";
