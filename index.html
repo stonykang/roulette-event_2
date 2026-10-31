@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>JNU 룰렛이벤트</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet" />
+</head>
+
+<body>
+  <!-- 관리자 잠금 화면 (비인가 외부 유입 차단) -->
+  <div class="lock-overlay" id="lock-overlay">
+    <div class="lock-card">
+      <div class="lock-icon">🔒</div>
+      <h2 class="lock-title">관리자 인증</h2>
+      <p class="lock-desc">운영 태블릿 전용 페이지입니다.<br>접속 비밀번호를 입력해 주세요.</p>
+      <form id="lock-form" onsubmit="event.preventDefault(); handleAdminLogin();">
+        <input
+          type="password"
+          id="admin-password"
+          placeholder="비밀번호 입력"
+          autocomplete="current-password"
+          autofocus
+        />
+        <button type="submit" id="lock-submit-btn">접속하기</button>
+      </form>
+      <p class="lock-error" id="lock-error"></p>
+    </div>
+  </div>
+
+  <div class="main-container" id="main-container" style="display: none;">
+    <header>
+      <button class="lock-toggle-btn" id="lock-toggle-btn" title="화면 잠금">🔒 잠금</button>
+      <p class="sub-text">2026 제주도민대학 온(ON) 페스타</p>
+      <h1 class="main-title">제주대학교 RISE사업단<br>평생교육사업 홍보관</h1>
+      <div class="divider"></div>
+      <h2 class="event-title">행운의 룰렛 이벤트</h2>
+      <p class="desc">룰렛을 돌려 행운을 잡으세요!</p>
+    </header>
+
+    <div class="game-area">
+      <div class="wheel-container">
+        <div class="marker"></div>
+        <div class="wheel" id="wheel"></div>
+        <button class="center-btn" id="spin-btn"></button>
+      </div>
+    </div>
+
+    <div class="result-area">
+      <div class="result-display" id="result-display">
+        START 버튼을 터치하세요!
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
