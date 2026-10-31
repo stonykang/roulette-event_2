@@ -303,8 +303,7 @@ header {
   transform: scale(0.96);
 }
 
-.reset-btn:hover {
-  background: #fff3f3;
-  border-color: #ffd2d2;
-  color: #d92525;
+.admin-btn:hover {
+  background: #e8eef8;
+  border-color: #ccd9ee;
 }

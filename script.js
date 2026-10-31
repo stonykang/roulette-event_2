@@ -328,27 +328,29 @@ if (lockToggleBtn) {
 }
 
 // ==========================================
-// 🔄 테스트 데이터 및 재고 초기화 관리
+// ⚙️ 관리 메뉴 (비밀번호 확인 후 초기화)
 // ==========================================
 const resetBtn = document.getElementById("reset-btn");
 
 function resetRouletteData() {
-  const confirmed = confirm(
-    "⚠️ [데이터 및 재고 초기화]\n\n누적 회차와 모든 당첨 이력(고액 상품 잔여 재고)을 초기화하시겠습니까?\n\n초기화 시 배달의민족 5만원(1개)과 올리브영 3만원(1개)이 다시 1개씩 충전됩니다."
-  );
-  if (!confirmed) return;
+  const entered = prompt("비밀번호를 입력하세요:");
+  if (entered === null) return; // 취소
 
-  // 로컬 영구 저장소 데이터 삭제
-  localStorage.removeItem("roulette_prize_history");
-  localStorage.removeItem("roulette_spin_count");
-  spinCount = 0;
+  if (entered.trim() === ADMIN_PASSWORD) {
+    // 로컬 영구 저장소 데이터 삭제
+    localStorage.removeItem("roulette_prize_history");
+    localStorage.removeItem("roulette_spin_count");
+    spinCount = 0;
 
-  // 룰렛 판 및 결과창 리셋
-  wheel.style.transform = "rotate(0deg)";
-  resultDisplay.innerText = "START 버튼을 터치하세요!";
-  resultDisplay.style.color = "var(--text-primary)";
+    // 룰렛 판 및 결과창 리셋
+    wheel.style.transform = "rotate(0deg)";
+    resultDisplay.innerText = "START 버튼을 터치하세요!";
+    resultDisplay.style.color = "var(--text-primary)";
 
-  alert("✅ 초기화가 완료되었습니다!\n- 누적 회차: 0회\n- 배달의민족 5만원 재고: 1개 남음\n- 올리브영 3만원 재고: 1개 남음");
+    alert("초기화되었습니다.");
+  } else {
+    alert("비밀번호가 일치하지 않습니다.");
+  }
 }
 
 if (resetBtn) {
