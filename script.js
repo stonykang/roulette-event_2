@@ -327,6 +327,34 @@ if (lockToggleBtn) {
   lockToggleBtn.addEventListener("click", adminLogout);
 }
 
+// ==========================================
+// 🔄 테스트 데이터 및 재고 초기화 관리
+// ==========================================
+const resetBtn = document.getElementById("reset-btn");
+
+function resetRouletteData() {
+  const confirmed = confirm(
+    "⚠️ [데이터 및 재고 초기화]\n\n누적 회차와 모든 당첨 이력(고액 상품 잔여 재고)을 초기화하시겠습니까?\n\n초기화 시 배달의민족 5만원(1개)과 올리브영 3만원(1개)이 다시 1개씩 충전됩니다."
+  );
+  if (!confirmed) return;
+
+  // 로컬 영구 저장소 데이터 삭제
+  localStorage.removeItem("roulette_prize_history");
+  localStorage.removeItem("roulette_spin_count");
+  spinCount = 0;
+
+  // 룰렛 판 및 결과창 리셋
+  wheel.style.transform = "rotate(0deg)";
+  resultDisplay.innerText = "START 버튼을 터치하세요!";
+  resultDisplay.style.color = "var(--text-primary)";
+
+  alert("✅ 초기화가 완료되었습니다!\n- 누적 회차: 0회\n- 배달의민족 5만원 재고: 1개 남음\n- 올리브영 3만원 재고: 1개 남음");
+}
+
+if (resetBtn) {
+  resetBtn.addEventListener("click", resetRouletteData);
+}
+
 // 페이지 로드 시 기존 인증 여부 확인 (태블릿에서는 계속 열려있음)
 (function checkAdminAuth() {
   const isAuth = localStorage.getItem("roulette_admin_auth");
