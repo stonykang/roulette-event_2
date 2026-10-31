@@ -22,14 +22,38 @@ const LIMITED_STOCK = {
   2: 1, // index 2 (올리브영 3만원): 최대 1명
 };
 
-// 기본 가중치 (300회 진행 시 1회 등장할 수 있도록 자연스러운 0.33% 부여)
-// index 0: 배달의민족 50,000원 -> 0.33% (1회 당첨 즉시 0%로 영구 차단)
-// index 1: 전국편의점 3,000원   -> 49.67%
-// index 2: 올리브영 30,000원   -> 0.33% (1회 당첨 즉시 0%로 영구 차단)
-// index 3: 다시 돌려보세요! (꽝)-> 20%
-// index 4: 스타벅스 10,000원   -> 5%
-// index 5: 올리브영 5,000원     -> 24.67%
-const BASE_WEIGHTS = [0.33, 49.67, 0.33, 20, 5, 24.67];
+// 300회 행사 기준: 극초반 1등 소진을 원천 차단하고 후반부에 터지도록 하는 회차별 동적 확률 시스템
+// - 올리브영 3만원: 120회차 이전 0% (차단) -> 120회차부터 해제 -> 200회차 이후 확률 상승
+// - 배달의민족 5만원: 180회차 이전 0% (차단) -> 180회차부터 해제 -> 250회차 이후 피날레 상승
+function getDynamicWeight(index, currentSpin) {
+  // 1. 이미 1회 당첨되어 재고가 0개인 경우 -> 절대 안 나옴 (영구 0%)
+  if (LIMITED_STOCK[index] !== undefined && getAvailableStock(index) <= 0) {
+    return 0;
+  }
+
+  // 2. index 2: 올리브영 30,000원권 (120회차 이전 차단)
+  if (index === 2) {
+    if (currentSpin < 120) return 0;      // 1 ~ 119회차: 0% (극초반 절대 등장 금지)
+    if (currentSpin < 200) return 0.6;    // 120 ~ 199회차: 0.6%
+    return 1.8;                           // 200회차 이후: 1.8% (후반부 집중 등장)
+  }
+
+  // 3. index 0: 배달의민족 50,000원권 (최고 대상 - 180회차 이전 차단)
+  if (index === 0) {
+    if (currentSpin < 180) return 0;      // 1 ~ 179회차: 0% (초/중반 절대 등장 금지)
+    if (currentSpin < 250) return 0.8;    // 180 ~ 249회차: 0.8%
+    return 2.5;                           // 250회차 이후: 2.5% (클라이맥스 피날레)
+  }
+
+  // 4. 일반 상품 가중치
+  const standardWeights = {
+    1: 50, // 전국편의점 3,000원 (약 50%)
+    3: 20, // 다시 돌려보세요! 꽝 (약 20%)
+    4: 5,  // 스타벅스 10,000원 (약 5%)
+    5: 25, // 올리브영 5,000원 (약 25%)
+  };
+  return standardWeights[index] || 1;
+}
 
 // 새로고침/재접속 시에도 안전하게 유지되는 당첨 이력 및 재고 확인 함수
 function getPrizeHistory() {
@@ -181,16 +205,12 @@ function playLoseSound() {
   });
 }
 
-// 가중치 및 재고 기반 랜덤 인덱스 선택 함수
+// 가중치 및 회차/재고 기반 스마트 랜덤 인덱스 선택 함수
 function getWeightedRandom() {
-  // 실시간 잔여 재고를 반영한 가중치 계산
-  const currentWeights = BASE_WEIGHTS.map((weight, idx) => {
-    // 한정 수량 상품(0번, 2번)의 재고가 0개이면 확률을 0%로 강제 차단!
-    if (LIMITED_STOCK[idx] !== undefined && getAvailableStock(idx) <= 0) {
-      return 0;
-    }
-    return weight;
-  });
+  const nextSpin = spinCount + 1;
+
+  // 현재 회차 및 잔여 재고를 반영한 실시간 가중치 계산
+  const currentWeights = prizes.map((_, idx) => getDynamicWeight(idx, nextSpin));
 
   let totalWeight = 0;
   for (let i = 0; i < currentWeights.length; i++) {
